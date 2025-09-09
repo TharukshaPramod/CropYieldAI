@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+crop-ai-env/
+
+# Environment variables
+.env
+
+# Python compiled files
+__pycache__/
+*.pyc
+
+# OS generated files
+*.swp
+.DS_Store
+
+# IDE files
+.vscode/
+*.code-workspace
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
