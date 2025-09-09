@@ -1,26 +1,34 @@
-from crewai import Agent, Tool
-from sklearn.linear_model import LinearRegression
-import pandas as pd
-from utils.security import decrypt
-import shap
+from crewai import Agent
+from crewai.tools import BaseTool
+from langchain.schema import Document
+import spacy
+from utils.security import sanitize_input, encrypt
+from utils.db import Session, CropData
 
-def predict_tool(encrypted_data: str) -> dict:
-    data = decrypt(encrypted_data)
-    df = pd.read_json(data)
-    X = df[['rain', 'ph']]
-    y = df['yield']
-    model = LinearRegression().fit(X, y)
-    prediction = model.predict([[400, 6.5]])[0]
+nlp = spacy.load('en_core_web_sm')
 
-    explainer = shap.Explainer(model, X)
-    shap_values = explainer(X)
-    explanation = str(shap_values)
+class PredictTool(BaseTool):
+    name: str = "PredictYield"
+    description: str = "Predicts crop yield based on location and data"
 
-    return {"prediction": prediction, "explanation": explanation}
+    def _run(self, data: str) -> str:
+        query = sanitize_input(data)
+        doc = nlp(query)
+        entities = {ent.label_: ent.text for ent in doc.ents}
+        location = entities.get('GPE', 'unknown')
+        # Simple prediction logic (placeholder)
+        prediction = f"Predicted yield for {location}: 5 tons/ha"
+        print(f"Prediction log: {prediction}")
+        return encrypt(prediction)
 
 predictor_agent = Agent(
     role="Predictor Agent",
-    goal="Predict crop yields with ML",
-    backstory="Uses scikit-learn and SHAP for explainable predictions",
-    tools=[Tool(name="PredictYield", func=predict_tool, description="ML prediction tool")]
+    goal="Predict crop yields based on processed data",
+    backstory="Specializes in yield prediction using NLP and basic models",
+    tools=[PredictTool()]
 )
+
+if __name__ == "__main__":
+    from utils.security import decrypt
+    sample_data = "wheat yield in California"
+    print(decrypt(predictor_agent.tools[0]._run(sample_data)))
