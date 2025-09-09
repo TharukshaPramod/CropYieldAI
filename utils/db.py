@@ -20,5 +20,11 @@ Session = sessionmaker(bind=ENGINE)
 
 def load_sample_data():
     session = Session()
-    session.add(CropData(crop='wheat', location='California', data='Yield: 5 tons/ha, soil pH 6.5, rain 400mm'))
-    session.commit()
+    try:
+        session.add(CropData(crop='wheat', location='California', data='Yield: 5 tons/ha, soil pH 6.5, rain 400mm'))
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
