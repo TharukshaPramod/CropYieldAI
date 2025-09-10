@@ -27,7 +27,7 @@ def load_sample_data():
         session.commit()
 
         # Load Kaggle dataset
-        df = pd.read_csv('data/crop_yield_data.csv')
+        df = pd.read_csv('data/crop_yield_data_sampled.csv')
         for index, row in df.iterrows():
             crop = row['Crop']
             location = f"{row['State']} {row['District']}"
