@@ -26,14 +26,15 @@ def load_sample_data():
         session.query(CropData).delete()
         session.commit()
 
-        # Load Kaggle dataset
-        df = pd.read_csv('data/crop_yield_data_sampled.csv')
+        # Load the new Kaggle dataset
+        df = pd.read_csv('data/crop_yield_data_sampled.csv')  # Replace with your CSV filename
         for index, row in df.iterrows():
             crop = row['Crop']
-            location = f"{row['State']} {row['District']}"
-            data = f"Year: {row['Year']}, Season: {row['Season']}, Area: {row['Area']}, Production: {row['Production']}"
+            location = row['Region']  # Use Region as location
+            data = f"Soil: {row['Soil_Type']}, Rainfall: {row['Rainfall_mm']}mm, Temperature: {row['Temperature_Celsius']}°C, Fertilizer: {row['Fertilizer_Used']}, Irrigation: {row['Irrigation_Used']}, Weather: {row['Weather_Condition']}, Days to Harvest: {row['Days_to_Harvest']}, Yield: {row['Yield_tons_per_hectare']} tons/ha"
             session.add(CropData(crop=crop, location=location, data=data))
         session.commit()
+        print(f"Loaded {len(df)} records from the new dataset.")
     except Exception as e:
         session.rollback()
         raise e
