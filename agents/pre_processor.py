@@ -1,15 +1,31 @@
-from crewai import Agent, Tool
-import pandas as pd
-from utils.security import sanitize_input
+from crewai import Agent
+from crewai.tools import BaseTool
+from langchain.schema import Document
+import spacy
+from utils.security import sanitize_input, encrypt
+from utils.db import Session, CropData
 
-def pre_process_tool(raw_data: str) -> str:
-    sanitized = sanitize_input(raw_data)
-    df = pd.read_csv(pd.compat.StringIO(sanitized)) if 'csv' in sanitized else pd.DataFrame()
-    return df.to_json()
+nlp = spacy.load('en_core_web_sm')
+
+class PreProcessTool(BaseTool):
+    name: str = "PreProcessData"
+    description: str = "Pre-processes raw crop data for analysis"
+
+    def _run(self, raw_data: str) -> str:
+        cleaned_data = sanitize_input(raw_data)
+        # Add pre-processing logic (e.g., tokenization or basic cleaning)
+        processed = f"Cleaned: {cleaned_data}"
+        print(f"Pre-processing log: {processed}")
+        return encrypt(processed)
 
 pre_processor_agent = Agent(
     role="Pre-Processor Agent",
-    goal="Clean and prepare data",
-    backstory="Uses pandas for data normalization",
-    tools=[Tool(name="PreProcess", func=pre_process_tool, description="Data cleaning tool")]
+    goal="Clean and prepare raw crop data for analysis",
+    backstory="Specializes in data pre-processing with NLP and security",
+    tools=[PreProcessTool()]
 )
+
+if __name__ == "__main__":
+    from utils.security import decrypt
+    sample_data = "Raw data: wheat! @California #yield5"
+    print(decrypt(pre_processor_agent.tools[0]._run(sample_data)))
