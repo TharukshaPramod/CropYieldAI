@@ -22,15 +22,12 @@ Session = sessionmaker(bind=ENGINE)
 def load_sample_data():
     session = Session()
     try:
-        # Clear existing data to avoid duplicates
         session.query(CropData).delete()
         session.commit()
-
-        # Load the new Kaggle dataset
-        df = pd.read_csv('data/crop_yield_data_sampled.csv')  # Replace with your CSV filename
+        df = pd.read_csv('data/crop_yield_data_sampled.csv')
         for index, row in df.iterrows():
             crop = row['Crop']
-            location = row['Region']  # Use Region as location
+            location = row['Region']
             data = f"Soil: {row['Soil_Type']}, Rainfall: {row['Rainfall_mm']}mm, Temperature: {row['Temperature_Celsius']}°C, Fertilizer: {row['Fertilizer_Used']}, Irrigation: {row['Irrigation_Used']}, Weather: {row['Weather_Condition']}, Days to Harvest: {row['Days_to_Harvest']}, Yield: {row['Yield_tons_per_hectare']} tons/ha"
             session.add(CropData(crop=crop, location=location, data=data))
         session.commit()
@@ -41,6 +38,5 @@ def load_sample_data():
     finally:
         session.close()
 
-# Load data on import (optional, or call manually)
 if __name__ == "__main__":
     load_sample_data()

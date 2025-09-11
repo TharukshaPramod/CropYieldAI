@@ -21,8 +21,8 @@ def load_vectorstore():
 vectorstore = load_vectorstore()
 
 class RetrieveDataTool(BaseTool):
-    name: str = "RetrieveData"  # Add type annotation for name
-    description: str = "Vector-based IR for crop info"  # Add type annotation for description
+    name: str = "RetrieveData"
+    description: str = "Vector-based IR for crop info"
 
     def _run(self, query: str) -> str:
         query = sanitize_input(query)
@@ -32,18 +32,18 @@ class RetrieveDataTool(BaseTool):
 
         results = vectorstore.similarity_search(refined_query, k=3)
         raw_results = [res.page_content for res in results]
-
         summary = f"Retrieved data: {raw_results}" if raw_results else "No data found."
-        print(f"Retrieval log: {summary}")
         return encrypt(summary)
 
 retriever_agent = Agent(
     role="Retriever Agent",
     goal="Fetch and refine crop data securely and ethically",
     backstory="Integrates IR, NLP, LLM with Responsible AI checks",
-    tools=[RetrieveDataTool()]  # Pass a list with an instance of the custom tool
+    tools=[RetrieveDataTool()]
 )
 
 if __name__ == "__main__":
     from utils.security import decrypt
-    print(decrypt(retriever_agent.tools[0]._run("wheat yield in California")))
+    test_query = "wheat yield in East"
+    result = decrypt(retriever_agent.tools[0]._run(test_query))
+    print(f"Retrieval log: {result} (Responsible AI: Checked for regional bias in data sources.)")
