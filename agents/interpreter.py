@@ -1,10 +1,10 @@
-# agents/interpreter.py
 import os, sys, re
+from typing import Optional, Type
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from typing import Optional, Type
 from pydantic import BaseModel
 from crewai import Agent
 from crewai.tools import BaseTool
@@ -25,6 +25,7 @@ class InterpretTool(BaseTool):
             except:
                 pass
         q = sanitize_input(str(q or ""))
+
         m = re.search(r"([0-9]+\.?[0-9]*)\s*tons?\/ha", q)
         predicted = float(m.group(1)) if m else None
 

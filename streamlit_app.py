@@ -1,4 +1,5 @@
-# streamlit_app.py
+# streamlit_app.py (replace existing)
+
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -12,15 +13,25 @@ JWT_SECRET = os.getenv("JWT_SECRET", "supersecretkey")
 st.set_page_config(page_title="Crop Yield Prediction", page_icon="🌾")
 st.title("Crop Yield Prediction — Demo")
 
-query = st.text_input("Enter query (e.g., wheat yield in East)", "wheat yield in East")
+query = st.text_input("Enter query (e.g., wheat yield in East with Rainfall: 492 Temperature: 15 Soil: Clay Fertilizer: True Irrigation: True)", "wheat yield in East")
 if st.button("Predict"):
     try:
         token = jwt.encode({"user": "demo"}, JWT_SECRET, algorithm="HS256")
         headers = {"Authorization": f"Bearer {token}"}
-        r = requests.post(API_URL, json={"query": query}, headers=headers, timeout=20)
+        r = requests.post(API_URL, json={"query": query}, headers=headers, timeout=30)
         if r.status_code == 200:
-            st.success("Prediction + Interpretation:")
-            st.write(r.json().get("result"))
+            res = r.json().get("result")
+            # If structured dict:
+            if isinstance(res, dict):
+                if "prediction" in res or "interpretation" in res:
+                    st.subheader("Prediction")
+                    st.write(res.get("prediction"))
+                    st.subheader("Interpretation")
+                    st.write(res.get("interpretation"))
+                else:
+                    st.write(res)  # LLM raw or other structure
+            else:
+                st.write(res)  # fallback
         else:
             st.error(f"API error {r.status_code}: {r.text}")
     except Exception as e:
