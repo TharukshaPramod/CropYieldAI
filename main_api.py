@@ -1,23 +1,33 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+# main_api.py
+import os
+from dotenv import load_dotenv
+load_dotenv()
+from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel
 import jwt
-from agents.crew import crop_crew
-from dotenv import load_dotenv
-import os
+from orchestrator import run_pipeline
 
-load_dotenv()
-app = FastAPI()
-security = HTTPBearer()
+JWT_SECRET = os.getenv("JWT_SECRET", "supersecretkey")
 
-class Query(BaseModel):
+app = FastAPI(title="Crop Yield AI API")
+
+class PredictRequest(BaseModel):
     query: str
 
-@app.post("/predict")
-async def predict(query: Query, credentials: HTTPAuthorizationCredentials = Depends(security)):
+def verify_token(request: Request):
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    token = auth.split(" ", 1)[1]
     try:
-        jwt.decode(credentials.credentials, os.getenv('JWT_SECRET'), algorithms=["HS256"])
-    except:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    result = crop_crew.kickoff(inputs={"query": query.query})
-    return {"result": result}
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.post("/predict")
+def predict(req: PredictRequest, payload = Depends(verify_token)):
+    if not req.query:
+        raise HTTPException(status_code=400, detail="Query required")
+    res = run_pipeline(req.query)
+    return {"result": res}
