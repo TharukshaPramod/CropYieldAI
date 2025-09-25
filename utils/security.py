@@ -6,9 +6,6 @@ from cryptography.fernet import Fernet, InvalidToken
 
 load_dotenv()
 
-# ----------------------------
-# Key Management
-# ----------------------------
 def _get_key_from_env():
     k = os.getenv("ENCRYPT_KEY")
     return k.encode() if k else None
@@ -20,28 +17,22 @@ if KEY is None:
 
 fernet = Fernet(KEY)
 
-# ----------------------------
-# Utility Functions
-# ----------------------------
 def sanitize_input(text: str) -> str:
-    """Clean and normalize user input to prevent injection or invalid chars."""
     if text is None:
         return ""
     text = str(text)
-    # Allow basic punctuation, keep "tons/ha"
+    # allow forward slash so "tons/ha" stays intact (and some common punctuation)
     text = re.sub(r"[^\w\s\.\,\/\:\%\-\(\)]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
 def encrypt(data: str) -> str:
-    """Encrypt plain text with Fernet key."""
-    if not data:
+    if data is None:
         return ""
     return fernet.encrypt(str(data).encode()).decode()
 
 def decrypt(token: str) -> str:
-    """Decrypt Fernet token safely."""
-    if not token:
+    if token is None:
         return ""
     try:
         return fernet.decrypt(str(token).encode()).decode()
@@ -50,13 +41,19 @@ def decrypt(token: str) -> str:
 
 def decrypt_embedded_tokens(text: str) -> str:
     """
-    Search for any Fernet-encrypted tokens embedded in text and decrypt them.
-    Example: 'Predicted yield: gAAAA...==' -> 'Predicted yield: 5.4 tons/ha'
+    Search for any Fernet-encrypted tokens inside `text` and replace them with decrypted content.
+    Example: "Result: gAAAAA..." -> "Result: Decrypted content"
     """
     if not text:
         return ""
-    matches = re.findall(r"gAAAA[A-Za-z0-9_\-]+", text)
-    for token in matches:
-        decrypted = decrypt(token)
-        text = text.replace(token, decrypted)
+    # Simple pattern matching for typical Fernet tokens (start with gAAAA)
+    matches = re.findall(r"gAAAA[A-Za-z0-9_\-]+=*", text)
+    for token in set(matches):
+        try:
+            plain = decrypt(token)
+            # replace all occurrences of token with decrypted text
+            text = text.replace(token, plain)
+        except Exception:
+            # leave token as-is if decryption fails
+            pass
     return text
