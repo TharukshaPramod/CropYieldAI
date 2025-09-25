@@ -22,29 +22,42 @@ except Exception:
 # ----------------------------
 def run_det_pipeline(query: str) -> dict:
     """Run pipeline without LLM involvement (step-by-step with encryption/decryption)."""
+    out = {"mode": "deterministic", "preprocessed": None, "retrieved": None, "prediction": None, "interpretation": None}
+
     # Preprocess
-    enc1 = pre_processor_agent.tools[0]._run({"description": query})
-    pre = decrypt(enc1)
+    try:
+        enc1 = pre_processor_agent.tools[0]._run({"description": query})
+        pre = decrypt(enc1)
+        out["preprocessed"] = pre
+    except Exception as e:
+        return {"error": "preprocess_failed", "detail": str(e)}
 
     # Retrieve
-    enc2 = retriever_agent.tools[0]._run({"description": pre})
-    retrieved = decrypt(enc2)
+    try:
+        enc2 = retriever_agent.tools[0]._run({"description": pre})
+        retrieved = decrypt(enc2)
+        out["retrieved"] = retrieved
+    except Exception as e:
+        return {"error": "retrieve_failed", "detail": str(e)}
 
     # Predict
-    enc3 = predictor_agent.tools[0]._run({"description": pre})
-    prediction = decrypt(enc3)
+    try:
+        enc3 = predictor_agent.tools[0]._run({"description": pre})
+        prediction = decrypt(enc3)
+        out["prediction"] = prediction
+    except Exception as e:
+        return {"error": "predict_failed", "detail": str(e)}
 
     # Interpret
-    enc4 = interpreter_agent.tools[0]._run({"description": prediction})
-    interpretation = decrypt(enc4)
+    try:
+        enc4 = interpreter_agent.tools[0]._run({"description": prediction})
+        interpretation = decrypt(enc4)
+        out["interpretation"] = interpretation
+    except Exception as e:
+        # interpretation failure shouldn't crash everything; return partial output
+        out["interpretation"] = f"[interpretation_failed: {e}]"
 
-    return {
-        "mode": "deterministic",
-        "preprocessed": pre,
-        "retrieved": retrieved,
-        "prediction": prediction,
-        "interpretation": interpretation
-    }
+    return out
 
 # ----------------------------
 # LLM-Orchestrated Pipeline
@@ -54,20 +67,27 @@ def run_llm_pipeline(query: str) -> dict:
 
     This function attempts to:
       - run crew.kickoff
-      - decrypt any embedded encrypted tokens
-      - try to extract preprocessed, retrieved, predicted, interpreted pieces
+      - decrypt embedded tokens
+      - do a best-effort extraction of pieces
       - if interpretation isn't present, run local interpreter on discovered prediction
     """
     if crew is None:
         return {"error": "Crew/LLM not configured on this machine."}
 
     try:
-        raw = crew.kickoff(inputs={"query": query})
+        # Guarded kickoff with timeout by running in a thread and joining.
+        import concurrent.futures
+        MAX_LLM_SECONDS = int(os.getenv("LLM_TIMEOUT", "35"))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(crew.kickoff, inputs={"query": query})
+            try:
+                raw = future.result(timeout=MAX_LLM_SECONDS)
+            except concurrent.futures.TimeoutError:
+                future.cancel()
+                return {"error": f"LLM orchestrator timed out after {MAX_LLM_SECONDS}s"}
         text = str(raw)
-        # Replace encrypted tokens (gAAAA...) with decrypted text if present
         text = decrypt_embedded_tokens(text)
 
-        # Best-effort extraction of pieces
         preprocessed = None
         retrieved = None
         prediction_text = None
@@ -78,10 +98,9 @@ def run_llm_pipeline(query: str) -> dict:
         if m_pre:
             preprocessed = m_pre.group(1).strip()
 
-        # attempt to extract retrieval block (FAISS/TFIDF)
-        m_ret = re.search(r"(Retrieved\s*\(.*?\)\s*:\s*\[.*?\])", text, re.S | re.I)
+        # attempt to extract retrieval block
+        m_ret = re.search(r"(Retrieved(?:\s*\(.*?\))?\s*[:\-]?\s*\[.*?\])", text, re.S | re.I)
         if not m_ret:
-            # generic fallback: look for 'Retrieved' until Prediction or end
             m_ret2 = re.search(r"(Retrieved[:].*?)(?=(Predicted|Interpretation|$))", text, re.S | re.I)
             if m_ret2:
                 retrieved = m_ret2.group(1).strip()
@@ -89,14 +108,13 @@ def run_llm_pipeline(query: str) -> dict:
             retrieved = m_ret.group(1).strip()
 
         # attempt to find "Predicted yield..." lines
-        m_pred = re.search(r"(Predicted yield .*?:\s*[0-9]+\.?[0-9]*\s*tons?\/ha)", text, re.I)
+        m_pred = re.search(r"Predicted yield .*?:\s*([0-9]+\.?[0-9]*)\s*tons?\/ha", text, re.I)
         if m_pred:
-            prediction_text = m_pred.group(1).strip()
+            prediction_text = f"Predicted yield: {m_pred.group(1)} tons/ha"
 
         # attempt to find explicit interpretation text
         m_interp = re.search(r"(Interpretation[:]?.*?)(?=$)", text, re.S | re.I)
         if m_interp:
-            # keep only first reasonable chunk
             interpretation = m_interp.group(1).strip()
 
         # If no interpretation found but a prediction was found, call local interpreter to be safe

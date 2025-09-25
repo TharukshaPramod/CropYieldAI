@@ -71,7 +71,12 @@ class RetrieveDataTool(BaseTool):
         if _vectorstore is None:
             _build_index()
 
-        q = query.get("description") if isinstance(query, dict) else query
+        # accept dict or string inputs
+        q = None
+        if isinstance(query, dict):
+            q = query.get("description") or query.get("query") or str(query)
+        else:
+            q = query
 
         if isinstance(q, str) and q.startswith("gAAAAA"):  # decrypt if encrypted
             try:

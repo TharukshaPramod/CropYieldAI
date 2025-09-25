@@ -1,6 +1,6 @@
 # agents/interpreter.py
 import os, sys, re
-from typing import Optional, Type, Dict
+from typing import Optional, Type, Any
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -18,29 +18,27 @@ class InterpretTool(BaseTool):
     description: str = "Interprets predicted yields and compares to baseline"
     args_schema: Optional[Type[BaseModel]] = InterpretToolSchema
 
-    def _run(self, prediction: Optional[dict] = None, baseline: Optional[float] = None, units: str = "tons/ha") -> str:
-        # Basic input validation
+    def _run(self, prediction: Optional[Any] = None, baseline: Optional[float] = None, units: str = "tons/ha") -> str:
         if not prediction:
             return encrypt("Error: No prediction provided to interpreter.")
 
-        # If prediction is dict of crop->value
-        if isinstance(prediction, dict) and not ("description" in prediction):
+        predictions = {}
+        # Case 1: dict of {crop: value}
+        if isinstance(prediction, dict) and "description" not in prediction:
             try:
                 predictions = {str(k): float(v) for k, v in prediction.items()}
             except Exception:
                 return encrypt("Error: Invalid prediction dict for interpretation.")
         else:
-            # Otherwise we expect a dict with "description" (encrypted or plaintext) or a raw string
+            # Case 2: dict with description or raw string
             q = prediction.get("description") if isinstance(prediction, dict) else prediction
             if not isinstance(q, str):
                 return encrypt("Error: Prediction format not understood.")
-
-            if q.startswith("gAAAAA"):
+            if q.startswith("gAAAAA"):  # encrypted
                 try:
                     q = decrypt(q)
                 except Exception:
                     return encrypt("Error: Could not decrypt interpreter input.")
-
             q = sanitize_input(q or "")
             m = re.search(r"([0-9]+\.?[0-9]*)\s*tons?\/ha", q)
             if m:
@@ -48,12 +46,12 @@ class InterpretTool(BaseTool):
             else:
                 return encrypt("Error: No numeric yield found in prediction.")
 
-        # Compute baseline if not provided
+        # Compute baseline
         if baseline is None:
             docs = get_all_decrypted_docs()
             yields = []
             for d in docs:
-                mm = re.search(r"Yield[:\s]*([0-9]+\.?[0-9]*)", d["data"])
+                mm = re.search(r"Yield[:\s]*([0-9]+\.?[0-9]*)", d.get("data", ""))
                 if mm:
                     try:
                         yields.append(float(mm.group(1)))
@@ -63,7 +61,7 @@ class InterpretTool(BaseTool):
         else:
             baseline_val = baseline
 
-        # Interpret each crop/value
+        # Interpret
         interpretations = []
         for crop, val in predictions.items():
             val = float(val)
@@ -79,11 +77,9 @@ class InterpretTool(BaseTool):
             interpretations.append(f"{crop}: {val:.2f} {units}, {status_text}")
 
         final_output = " | ".join(interpretations)
-        # extra advice:
         final_output += " Consider verifying rainfall, temperature, fertilizer and irrigation inputs."
         print(f"[Interpreter] {final_output}")
         return encrypt(final_output)
-
 
 interpreter_agent = Agent(
     role="Interpreter Agent",
@@ -92,9 +88,7 @@ interpreter_agent = Agent(
     tools=[InterpretTool()]
 )
 
-
 if __name__ == "__main__":
     sample = {"wheat": 4.33, "corn": 5.12}
     enc = interpreter_agent.tools[0]._run(prediction=sample, baseline=4.65)
-    from utils.security import decrypt
     print("Interpretation:", decrypt(enc))
