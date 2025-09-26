@@ -26,14 +26,8 @@ st.title("🌾 Crop Yield Prediction — Advanced UI")
 # Sidebar
 # ------------------------
 st.sidebar.header("Options")
-col_api, col_mode = st.sidebar.columns(2)
-with col_api:
-    async_mode = st.checkbox("Async mode", value=True)
-with col_mode:
-    use_llm = st.checkbox("Use LLM", value=False)
-
+use_llm = st.sidebar.checkbox("Use LLM (Crew / Ollama)", value=False)
 model_choice = st.sidebar.selectbox("Predictor model (runtime override)", ["rf", "linear"])
-max_wait_seconds = st.sidebar.slider("Max wait (s)", min_value=5, max_value=180, value=45, step=5)
 st.sidebar.markdown("---")
 
 # ------------------------
@@ -69,59 +63,20 @@ if st.button("Predict"):
         headers = {"Authorization": f"Bearer {token}"}
         payload = {"query": query, "use_llm": use_llm, "model": model_choice}
 
-        if async_mode:
-            submit_url = API_URL.replace("/predict", "/predict_async")
-            r = requests.post(submit_url, json=payload, headers=headers, timeout=10)
-            r.raise_for_status()
-            job = r.json()
-            job_id = job.get("job_id")
-            if not job_id:
-                raise RuntimeError("No job_id returned from server")
+        r = requests.post(API_URL, json=payload, headers=headers, timeout=30)
+        r.raise_for_status()
+        res = r.json().get("result")
 
-            st.info(f"Job submitted: {job_id}")
-            status_area = st.empty()
-            result_area = st.empty()
+        st.subheader("Raw result")
+        st.write(res)
 
-            import time
-            start = time.time()
-            while True:
-                if time.time() - start > max_wait_seconds:
-                    st.warning(f"Timed out waiting for job after {max_wait_seconds}s. You can query later.")
-                    break
-                jr = requests.get(API_URL.replace("/predict", f"/jobs/{job_id}"), headers=headers, timeout=10)
-                jr.raise_for_status()
-                j = jr.json()
-                status = j.get("status")
-                status_area.info(f"Status: {status}")
-                if status in ("completed", "failed"):
-                    if status == "completed":
-                        res = j.get("result")
-                        result_area.subheader("Raw result")
-                        result_area.write(res)
-                        if isinstance(res, dict):
-                            if "prediction" in res:
-                                st.subheader("Prediction")
-                                st.write(res["prediction"])
-                            if "interpretation" in res:
-                                st.subheader("Interpretation")
-                                st.write(res["interpretation"])
-                    else:
-                        st.error(f"Job failed: {j.get('error')}")
-                    break
-                time.sleep(1.2)
-        else:
-            r = requests.post(API_URL, json=payload, headers=headers, timeout=max_wait_seconds)
-            r.raise_for_status()
-            res = r.json().get("result")
-            st.subheader("Raw result")
-            st.write(res)
-            if isinstance(res, dict):
-                if "prediction" in res:
-                    st.subheader("Prediction")
-                    st.write(res["prediction"])
-                if "interpretation" in res:
-                    st.subheader("Interpretation")
-                    st.write(res["interpretation"])
+        if isinstance(res, dict):
+            if "prediction" in res:
+                st.subheader("Prediction")
+                st.write(res["prediction"])
+            if "interpretation" in res:
+                st.subheader("Interpretation")
+                st.write(res["interpretation"])
     except Exception as e:
         st.error(f"❌ Request failed: {e}")
 

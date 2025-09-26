@@ -16,7 +16,6 @@ from agents.interpreter import interpreter_agent
 OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:latest")
-LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "35"))
 
 # Build an LLM client only if the env says so / if it can be instantiated.
 ollama_llm = None
@@ -27,8 +26,7 @@ try:
     ollama_llm = LLM(
         model=f"ollama/{OLLAMA_MODEL}",
         base_url=OLLAMA_BASE,
-        api_key=OLLAMA_KEY,
-        timeout=LLM_TIMEOUT
+        api_key=OLLAMA_KEY
     )
     print("[crew] Ollama LLM client created.")
 except Exception as e:
@@ -78,10 +76,13 @@ interp_task = Task(
 # ----------------------------
 if ollama_llm is not None:
     try:
+        # Limit iterations to prevent infinite looping
+        max_iters = int(os.getenv("MAX_ITERATIONS", "8"))
         crew = Crew(
             agents=[pre_processor_agent, retriever_agent, predictor_agent, interpreter_agent],
             tasks=[pre_task, ret_task, pred_task, interp_task],
-            verbose=True
+            verbose=True,
+            max_iterations=max_iters
         )
         print("[crew] Crew initialized with Ollama LLM.")
     except Exception as e:

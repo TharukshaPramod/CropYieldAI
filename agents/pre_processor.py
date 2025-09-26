@@ -159,6 +159,10 @@ class PreProcessTool(BaseTool):
         else:
             q = raw_data
 
+        # Normalize common invalid forms: None, "None", empty strings
+        if q is None or (isinstance(q, str) and q.strip().lower() in ("", "none", "null")):
+            q = ""
+
         # decrypt if passed encrypted
         if isinstance(q, str) and q.startswith("gAAAAA"):
             try:
@@ -167,6 +171,10 @@ class PreProcessTool(BaseTool):
                 pass
 
         cleaned = sanitize_input(q)
+        if not cleaned:
+            processed = "Cleaned:  (Extracted: Crop=unknown, Location=unknown)"
+            print(f"[PreProcessor] {processed}")
+            return encrypt(processed)
         extracted = None
 
         # If environment says to use LLM, attempt LLM extraction
