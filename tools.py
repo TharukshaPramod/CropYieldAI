@@ -9,7 +9,8 @@ class PreProcessToolSchema(BaseModel):
 class RetrieveDataToolSchema(BaseModel):
     query: Optional[dict] = None
 
-
+class PredictToolSchema(BaseModel):
+    data: Optional[dict] = None
 
 class InterpretToolSchema(BaseModel):
     # Accept dict, float, or string for prediction (LLM might pass raw numbers)
