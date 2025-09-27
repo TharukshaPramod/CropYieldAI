@@ -59,34 +59,3 @@ def stats(payload=Depends(verify_token)):
     if not docs:
         return {"n_records": 0}
 
-    import re, statistics
-    yields = []
-    crops = set()
-    locations = set()
-    for d in docs:
-        if d.get("crop"):
-            crops.add(d.get("crop"))
-        if d.get("location"):
-            locations.add(d.get("location"))
-        m = re.search(r"Yield[:\s]*([0-9]+\.?[0-9]*)", d.get("data", ""))
-        if m:
-            try:
-                yields.append(float(m.group(1)))
-            except Exception:
-                pass
-
-    return {
-        "n_records": len(docs),
-        "crops": list(crops),
-        "locations": list(locations),
-        "yield_mean": statistics.mean(yields) if yields else None,
-        "yield_min": min(yields) if yields else None,
-        "yield_max": max(yields) if yields else None,
-    }
-
-# ------------------------
-# Health check
-# ------------------------
-@app.get("/health")
-def health():
-    return {"status": "ok"}
