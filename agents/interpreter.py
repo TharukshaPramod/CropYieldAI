@@ -19,9 +19,10 @@ class InterpretTool(BaseTool):
     args_schema: Optional[Type[BaseModel]] = InterpretToolSchema
 
     def _run(self, prediction: Optional[Union[dict, float, str]] = None, baseline: Optional[Union[float, str]] = None, units: str = "tons/ha") -> str:
-        # Basic input validation
-        if not prediction:
-            return encrypt("Error: No prediction provided to interpreter.")
+        # Handle missing prediction gracefully to avoid tool failure loops
+        if prediction is None or (isinstance(prediction, str) and prediction.strip() == ""):
+            msg = "No prediction provided. Cannot compare to baseline. Provide a numeric prediction (e.g., 5.1) or a sentence containing 'X tons/ha'."
+            return encrypt(msg)
 
         # Handle different prediction input types
         if isinstance(prediction, (int, float)):
@@ -99,7 +100,11 @@ class InterpretTool(BaseTool):
 interpreter_agent = Agent(
     role="Interpreter Agent",
     goal="Interpret predictions for actionable insights",
-    backstory="Explains model output in natural language, based strictly on ML predictions.",
+    backstory=(
+        "Explains model output in natural language, based strictly on ML predictions. "
+        "Always use the tool named 'InterpretResult' with JSON input. Do not invent other actions. "
+        "If no prediction is available, return a neutral message instead of failing."
+    ),
     tools=[InterpretTool()]
 )
 
