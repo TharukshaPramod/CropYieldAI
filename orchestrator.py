@@ -22,29 +22,39 @@ except Exception:
 # ----------------------------
 def run_det_pipeline(query: str) -> dict:
     """Run pipeline without LLM involvement (step-by-step with encryption/decryption)."""
-    # Preprocess
-    enc1 = pre_processor_agent.tools[0]._run({"description": query})
-    pre = decrypt(enc1)
+    try:
+        # Preprocess
+        enc1 = pre_processor_agent.tools[0]._run({"description": query})
+        pre = decrypt(enc1)
 
-    # Retrieve
-    enc2 = retriever_agent.tools[0]._run({"description": pre})
-    retrieved = decrypt(enc2)
+        # Retrieve
+        enc2 = retriever_agent.tools[0]._run({"description": pre})
+        retrieved = decrypt(enc2)
 
-    # Predict
-    enc3 = predictor_agent.tools[0]._run({"description": pre})
-    prediction = decrypt(enc3)
+        # Predict
+        enc3 = predictor_agent.tools[0]._run({"description": pre})
+        prediction = decrypt(enc3)
 
-    # Interpret
-    enc4 = interpreter_agent.tools[0]._run({"description": prediction})
-    interpretation = decrypt(enc4)
+        # Interpret
+        enc4 = interpreter_agent.tools[0]._run({"description": prediction})
+        interpretation = decrypt(enc4)
 
-    return {
-        "mode": "deterministic",
-        "preprocessed": pre,
-        "retrieved": retrieved,
-        "prediction": prediction,
-        "interpretation": interpretation
-    }
+        return {
+            "mode": "deterministic",
+            "preprocessed": pre,
+            "retrieved": retrieved,
+            "prediction": prediction,
+            "interpretation": interpretation
+        }
+    except Exception as e:
+        return {
+            "mode": "deterministic",
+            "error": f"Pipeline failed: {str(e)}",
+            "preprocessed": "Error in preprocessing",
+            "retrieved": "Error in retrieval", 
+            "prediction": "Error in prediction",
+            "interpretation": "Error in interpretation"
+        }
 
 # ----------------------------
 # LLM-Orchestrated Pipeline
