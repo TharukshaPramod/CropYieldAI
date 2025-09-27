@@ -138,12 +138,22 @@ class PredictTool(BaseTool):
         if df.empty:
             return encrypt("Error: No training data available for prediction.")
 
-        # ensure model exists
+        # ensure model exists and is valid
         if not (os.path.exists(MODEL_PATH) and os.path.exists(ENC_PATH)):
             _train_and_persist(df)
 
-        model = joblib.load(MODEL_PATH)
-        le = joblib.load(ENC_PATH)
+        # Try to load model with error handling
+        try:
+            model = joblib.load(MODEL_PATH)
+            le = joblib.load(ENC_PATH)
+        except Exception as e:
+            print(f"[Predictor] Model loading failed: {e}. Retraining...")
+            _train_and_persist(df)
+            try:
+                model = joblib.load(MODEL_PATH)
+                le = joblib.load(ENC_PATH)
+            except Exception as e2:
+                return encrypt(f"Error: Could not load or retrain model: {e2}")
 
         # parse query features (fallbacks)
         q_r = re.search(r"Rainfall[:\s]*([0-9]+\.?[0-9]*)", q)
