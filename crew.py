@@ -77,12 +77,13 @@ interp_task = Task(
 if ollama_llm is not None:
     try:
         # Limit iterations to prevent infinite looping
-        max_iters = int(os.getenv("MAX_ITERATIONS", "8"))
+        max_iters = int(os.getenv("MAX_ITERATIONS", "5"))
         crew = Crew(
             agents=[pre_processor_agent, retriever_agent, predictor_agent, interpreter_agent],
             tasks=[pre_task, ret_task, pred_task, interp_task],
             verbose=True,
-            max_iterations=max_iters
+            max_iterations=max_iters,
+            allow_delegation=False  # Prevent agents from delegating to each other
         )
         print("[crew] Crew initialized with Ollama LLM.")
     except Exception as e:

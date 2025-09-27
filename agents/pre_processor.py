@@ -271,7 +271,11 @@ class PreProcessTool(BaseTool):
 pre_processor_agent = Agent(
     role="Pre-Processor Agent",
     goal="Clean and prepare raw crop data for analysis",
-    backstory="Specializes in data pre-processing with NLP and LLM-based extraction",
+    backstory=(
+        "Specializes in data pre-processing with NLP and LLM-based extraction. "
+        "Always use the tool named 'PreProcessData' with JSON input. "
+        "Do not repeat the same input. If tool fails, provide a final answer instead of retrying."
+    ),
     tools=[PreProcessTool()]
 )
 
