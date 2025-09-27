@@ -119,4 +119,42 @@ def run_llm_pipeline(query: str) -> dict:
             except Exception as e:
                 interpretation = f"[local-interpretation-failed: {e}]"
 
- 
+        out = {
+            "mode": "llm",
+            "llm_raw": text,
+            "preprocessed": preprocessed,
+            "retrieved": retrieved,
+            "prediction": prediction_text,
+            "interpretation": interpretation
+        }
+        return out
+    except Exception as e:
+        # Fallback to deterministic pipeline if LLM path fails or times out
+        try:
+            return {
+                "mode": "llm-fallback",
+                **run_det_pipeline(query)
+            }
+        except Exception as e2:
+            return {"error": f"LLM run failed: {e}; fallback failed: {e2}"}
+
+# ----------------------------
+# Unified Entry
+# ----------------------------
+def run_pipeline(query: str, use_llm: bool = None) -> dict:
+    """Main entry point: choose deterministic or LLM pipeline."""
+    if use_llm is None:
+        use_llm = USE_LLM_ENV
+
+    if use_llm:
+        return run_llm_pipeline(query)
+    else:
+        return run_det_pipeline(query)
+
+if __name__ == "__main__":
+    test_query = "wheat yield in East with Rainfall: 492 Temperature: 15 Soil: Clay Fertilizer: True Irrigation: True"
+    print("=== Deterministic Test ===")
+    print(run_pipeline(test_query, use_llm=False))
+
+    print("\n=== LLM Test (if configured) ===")
+    print(run_pipeline("wheat yield in East", use_llm=True))
