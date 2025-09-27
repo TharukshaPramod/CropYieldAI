@@ -146,10 +146,7 @@ def _llm_extract_fields(user_text: str) -> Optional[dict]:
     return parsed
 
 
-class PreProcessTool(BaseTool):
-    name: str = "PreProcessData"
-    description: str = "Pre-process raw crop queries into cleaned structured text (LLM extraction + fallback)."
-    args_schema: Optional[Type[BaseModel]] = PreProcessToolSchema
+
 
     def _run(self, raw_data: Optional[dict] = None) -> str:
         # accept dict or string input
