@@ -70,15 +70,7 @@ if st.button("Predict"):
         st.subheader("Raw result")
         st.write(res)
 
-        if isinstance(res, dict):
-            if "prediction" in res:
-                st.subheader("Prediction")
-                st.write(res["prediction"])
-            if "interpretation" in res:
-                st.subheader("Interpretation")
-                st.write(res["interpretation"])
-    except Exception as e:
-        st.error(f"❌ Request failed: {e}")
+        
 
 # ------------------------
 # Sidebar actions
