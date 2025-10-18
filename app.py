@@ -41,7 +41,15 @@ soil = st.text_input("Soil type", "Clay")
 fert = st.selectbox("Fertilizer used?", ["True", "False"])
 irrig = st.selectbox("Irrigation used?", ["True", "False"])
 
-
+use_structured = st.checkbox("Build query from structured fields", value=True)
+if use_structured:
+    query = (
+        f"{crop} yield in {location} with "
+        f"Rainfall: {rainfall} Temperature: {temperature} "
+        f"Soil: {soil} Fertilizer: {fert} Irrigation: {irrig}"
+    )
+else:
+    query = st.text_input("Free-form query", "wheat yield in East")
 
 # ------------------------
 # Prediction
