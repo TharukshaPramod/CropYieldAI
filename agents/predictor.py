@@ -155,6 +155,7 @@ class PredictTool(BaseTool):
             except Exception as e2:
                 return encrypt(f"Error: Could not load or retrain model: {e2}")
 
+
         # parse query features (fallbacks)
         q_r = re.search(r"Rainfall[:\s]*([0-9]+\.?[0-9]*)", q)
         q_t = re.search(r"Temperature[:\s]*([0-9]+\.?[0-9]*)", q)
