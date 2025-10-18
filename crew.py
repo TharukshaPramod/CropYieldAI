@@ -74,3 +74,38 @@ interp_task = Task(
 # ----------------------------
 # Initialize Crew (only if LLM available)
 # ----------------------------
+if ollama_llm is not None:
+    try:
+        # Limit iterations to prevent infinite looping
+        max_iters = int(os.getenv("MAX_ITERATIONS", "5"))
+        crew = Crew(
+            agents=[pre_processor_agent, retriever_agent, predictor_agent, interpreter_agent],
+            tasks=[pre_task, ret_task, pred_task, interp_task],
+            verbose=True,
+            max_iterations=max_iters,
+            allow_delegation=False  # Prevent agents from delegating to each other
+        )
+        print("[crew] Crew initialized with Ollama LLM.")
+    except Exception as e:
+        crew = None
+        print(f"[crew] Failed to initialize Crew: {e}")
+else:
+    crew = None
+    print("[crew] Crew not initialized because no Ollama LLM is configured.")
+
+if __name__ == "__main__":
+    from orchestrator import run_pipeline
+
+    print("=== Deterministic pipeline run (no LLM) ===")
+    print(run_pipeline("wheat yield in East"))
+
+    print("\n=== LLM-driven Crew kickoff (only if Ollama configured) ===")
+    if crew:
+        try:
+            result = crew.kickoff(inputs={"query": "wheat yield in East"})
+            print(result)
+        except Exception as e:
+            print("[crew] kickoff failed:", e)
+    else:
+        print("Crew not initialized (no LLM).")
+
