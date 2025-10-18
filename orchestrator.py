@@ -141,6 +141,7 @@ def run_llm_pipeline(query: str) -> dict:
 # ----------------------------
 # Unified Entry
 # ----------------------------
+
 def run_pipeline(query: str, use_llm: bool = None) -> dict:
     """Main entry point: choose deterministic or LLM pipeline."""
     if use_llm is None:
