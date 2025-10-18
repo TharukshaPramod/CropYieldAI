@@ -141,20 +141,4 @@ def run_llm_pipeline(query: str) -> dict:
 # ----------------------------
 # Unified Entry
 # ----------------------------
-def run_pipeline(query: str, use_llm: bool = None) -> dict:
-    """Main entry point: choose deterministic or LLM pipeline."""
-    if use_llm is None:
-        use_llm = USE_LLM_ENV
 
-    if use_llm:
-        return run_llm_pipeline(query)
-    else:
-        return run_det_pipeline(query)
-
-if __name__ == "__main__":
-    test_query = "wheat yield in East with Rainfall: 492 Temperature: 15 Soil: Clay Fertilizer: True Irrigation: True"
-    print("=== Deterministic Test ===")
-    print(run_pipeline(test_query, use_llm=False))
-
-    print("\n=== LLM Test (if configured) ===")
-    print(run_pipeline("wheat yield in East", use_llm=True))
